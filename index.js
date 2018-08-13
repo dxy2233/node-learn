@@ -41,6 +41,20 @@ router
         itemsOld = itemsOld.join('<br/>')
         ctx.body = `<h2>友邦</h2>${itemsOld}`
 
+        //求差集arr1-arr2
+var arrayMinus=function(arr1,arr2){
+    var result=[];
+    arr1.forEach(function(x){
+        if(arr2.indexOf(x)===-1){
+            result.push(x);
+        }else{
+            return;
+        }
+    })
+    return result;
+}
+
+
         // fs.readFile('file.js', (err, data) => {
         //   if (err) {
         //     return console.log(err);
