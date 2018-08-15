@@ -64,36 +64,62 @@ const txt = (name, itemsNew) => {
 router
   .get('/', async (ctx, next) => {
     //友邦
-    // superagent.get('http://www.aia.com.cn/zh-cn/aia/media/gongkaixinxipilou/chanpinjibenxinxi.html')
-    //   .then(res => {
-    //     let $ = cheerio.load(res.text)
-    //     let items = []
-    //     $('table tbody tr').each((i, elem) => {
-    //       items.push(
-    //         $(elem).children().eq(0).text() + '-' +
-    //         $(elem).children().eq(1).text() + '-' +
-    //         $(elem).children().eq(5).text()
-    //       )
-    //     })
-    //     txt('友邦', items)
-    //   })
-    //   .catch(err => {
-    //     console.log(err);
-    //   })
+    superagent.get('http://www.aia.com.cn/zh-cn/aia/media/gongkaixinxipilou/chanpinjibenxinxi.html')
+      .then(res => {
+        let $ = cheerio.load(res.text)
+        let items = []
+        $('table tbody tr').each((i, elem) => {
+          items.push(
+            $(elem).children().eq(0).text() + '-' +
+            $(elem).children().eq(1).text() + '-' +
+            $(elem).children().eq(5).text()
+          )
+        })
+        txt('友邦', items)
+      })
+      .catch(err => {
+        console.log(err);
+      })
 
 
     //太平洋
-    const taipingyang = async () => {
+    const taipingyang = async (url, name) => {
       let items = []
-      await superagent.get('http://life.cpic.com.cn/xrsbx/gkxxpl/jbxx/gsgk/jydbxcpmljtk/zbcp/sx/index.shtml')
+      superagent.get(`http://life.cpic.com.cn/xrsbx/gkxxpl/jbxx/gsgk/jydbxcpmljtk/${url}/index.shtml`)
         .then(res => {
-          ctx.body = res.text
           let $ = cheerio.load(res.text)
-          let pages = $('#_PageBar_1531293246562')[0].attribs.size
-          console.log(pages);
+          let pages = $('.z_num').eq(-2).text()
+          $('.trHover').each((i, elem) => {
+            items.push(
+              $(elem).children().eq(1).children().eq(0).text()
+            )
+          })
+          return parseInt(pages)
+        })
+        .then(async pages => {
+          for(let i = 2; i < pages + 1; i++) {
+            await superagent.get(`http://life.cpic.com.cn/xrsbx/gkxxpl/jbxx/gsgk/jydbxcpmljtk/${url}/index_${i}.shtml`)
+              .then(res => {
+                let $ = cheerio.load(res.text)
+                $('.trHover').each((i, elem) => {
+                  items.push(
+                    $(elem).children().eq(1).children().eq(0).text()
+                  )
+                })
+              })
+          }
+        }).then(res => {
+          txt(name, items)
         })
     }
-    await taipingyang()
+    taipingyang('zbcp/sx', '太平洋在办寿险')
+    taipingyang('zbcp/nj', '太平洋在办年金')
+    taipingyang('zbcp/ywx', '太平洋在办意外险')
+    taipingyang('zbcp/jkx', '太平洋在办健康险')
+    taipingyang('tbcp/sx', '太平洋停办寿险')
+    taipingyang('tbcp/nj', '太平洋停办年金')
+    taipingyang('tbcp/ywx', '太平洋停办意外险')
+    taipingyang('tbcp/jkx', '太平洋停办健康险')
   })
 
 app
