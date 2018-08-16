@@ -61,57 +61,141 @@ const txt = (name, itemsNew) => {
   })
 }
 
-router
-  .get('/', async (ctx, next) => {
-    //友邦
-    superagent.get('http://www.aia.com.cn/zh-cn/aia/media/gongkaixinxipilou/chanpinjibenxinxi.html')
-      .then(res => {
-        let $ = cheerio.load(res.text)
-        let items = []
-        $('table tbody tr').each((i, elem) => {
-          items.push(
-            $(elem).children().eq(0).text() + '-' +
-            $(elem).children().eq(1).text() + '-' +
-            $(elem).children().eq(5).text()
-          )
-        })
-        txt('友邦', items)
-      })
-      .catch(err => {
-        console.log(err);
-      })
-
-
-    //太平洋
-    const taipingyang = async (url, name) => {
+//友邦
+const youbang = async (url, name) => {
+  superagent.get('http://www.aia.com.cn/zh-cn/aia/media/gongkaixinxipilou/chanpinjibenxinxi.html')
+    .then(res => {
+      let $ = cheerio.load(res.text)
       let items = []
-      superagent.get(`http://life.cpic.com.cn/xrsbx/gkxxpl/jbxx/gsgk/jydbxcpmljtk/${url}/index.shtml`)
-        .then(res => {
-          let $ = cheerio.load(res.text)
-          let pages = $('.z_num').eq(-2).text()
-          $('.trHover').each((i, elem) => {
-            items.push(
-              $(elem).children().eq(1).children().eq(0).text()
-            )
+      $('table tbody tr').each((i, elem) => {
+        items.push(
+          $(elem).children().eq(0).text() + '-' +
+          $(elem).children().eq(1).text() + '-' +
+          $(elem).children().eq(5).text()
+        )
+      })
+      txt('友邦', items)
+    })
+    .catch(err => {
+      console.log(err);
+    })
+}
+
+//太平洋
+const taipingyang = async (url, name) => {
+  let items = []
+  superagent.get(`http://life.cpic.com.cn/xrsbx/gkxxpl/jbxx/gsgk/jydbxcpmljtk/${url}/index.shtml`)
+    .then(res => {
+      let $ = cheerio.load(res.text)
+      let pages = $('.z_num').eq(-2).text()
+      $('.trHover').each((i, elem) => {
+        items.push(
+          $(elem).children().eq(1).children().eq(0).text()
+        )
+      })
+      return parseInt(pages)
+    })
+    .then(async pages => {
+      for(let i = 2; i < pages + 1; i++) {
+        await superagent.get(`http://life.cpic.com.cn/xrsbx/gkxxpl/jbxx/gsgk/jydbxcpmljtk/${url}/index_${i}.shtml`)
+          .then(res => {
+            let $ = cheerio.load(res.text)
+            $('.trHover').each((i, elem) => {
+              items.push(
+                $(elem).children().eq(1).children().eq(0).text()
+              )
+            })
           })
-          return parseInt(pages)
-        })
-        .then(async pages => {
-          for(let i = 2; i < pages + 1; i++) {
-            await superagent.get(`http://life.cpic.com.cn/xrsbx/gkxxpl/jbxx/gsgk/jydbxcpmljtk/${url}/index_${i}.shtml`)
-              .then(res => {
-                let $ = cheerio.load(res.text)
-                $('.trHover').each((i, elem) => {
-                  items.push(
-                    $(elem).children().eq(1).children().eq(0).text()
-                  )
-                })
-              })
-          }
-        }).then(res => {
-          txt(name, items)
-        })
-    }
+      }
+    }).then(res => {
+      txt(name, items)
+    })
+}
+
+//中国平安
+//SALES_STATUS 01为新产品 02为在售 03为停售
+const pingan = async () => {
+  let items = []
+  await superagent.get('http://life.pingan.com/life_insurance/elis.pa18.commonQuery.visit')
+    .query({ requestid: 'com.palic.elis.pos.intf.biz.action.PosQueryAction.queryPlanClause' })
+    .query({ SALES_STATUS: '01' })
+    .then(res => {
+      let $ = cheerio.load(res.text)
+      $('map').each((i, elem) => {
+        items.push(
+          $(elem).children().eq(3).text() + '-' +
+          $(elem).children().eq(7).text() + '-' +
+          $(elem).children().eq(0).text() + '-新品'
+        );
+      })
+    })
+  await superagent.get('http://life.pingan.com/life_insurance/elis.pa18.commonQuery.visit')
+    .query({ requestid: 'com.palic.elis.pos.intf.biz.action.PosQueryAction.queryPlanClause' })
+    .query({ SALES_STATUS: '02' })
+    .then(res => {
+      let $ = cheerio.load(res.text)
+      $('map').each((i, elem) => {
+        items.push(
+          $(elem).children().eq(3).text() + '-' +
+          $(elem).children().eq(7).text() + '-' +
+          $(elem).children().eq(0).text() + '-在售'
+        );
+      })
+    })
+  await superagent.get('http://life.pingan.com/life_insurance/elis.pa18.commonQuery.visit')
+    .query({ requestid: 'com.palic.elis.pos.intf.biz.action.PosQueryAction.queryPlanClause' })
+    .query({ SALES_STATUS: '03' })
+    .then(res => {
+      let $ = cheerio.load(res.text)
+      $('map').each((i, elem) => {
+        items.push(
+          $(elem).children().eq(3).text() + '-' +
+          $(elem).children().eq(7).text() + '-' +
+          $(elem).children().eq(0).text() + '-停售'
+        );
+      })
+    })
+  txt('平安', items)
+}
+const pinganWeb = async () => {
+  let items = []
+  superagent.get('https://life.pingan.com/app_js/pingan/v20/life/wxgf.js')
+    .then(res => {
+      let data = res.text.split(';')
+      let zs = JSON.parse(data[0].substr(data[0].indexOf('['), data[0].lastIndexOf(']')-62))
+      let ts = JSON.parse(data[1].substr(data[1].indexOf('['), data[1].lastIndexOf(']')-65))
+      zs.map((item, index, arr) => {
+        items.push(
+          item.planCode + '-' +
+          item.clauseName + '-起' +
+          item.startDate + '-停' +
+          item.endDate + '-' +
+          item.planSalesStatus
+        )
+      })
+      return ts
+    })
+    .then(ts => {
+      ts.map((item, index, arr) => {
+        items.push(
+          item.planCode + '-' +
+          item.clauseName + '-起' +
+          item.startDate + '-停' +
+          item.endDate + '-' +
+          item.planSalesStatus
+        )
+      })
+      txt('平安互联网产品', items)
+    })
+    .catch(err => {
+      console.log(err);
+    })
+}
+
+
+router.get('/', async (ctx, next) => {
+    youbang()
+
     taipingyang('zbcp/sx', '太平洋在办寿险')
     taipingyang('zbcp/nj', '太平洋在办年金')
     taipingyang('zbcp/ywx', '太平洋在办意外险')
@@ -120,6 +204,9 @@ router
     taipingyang('tbcp/nj', '太平洋停办年金')
     taipingyang('tbcp/ywx', '太平洋停办意外险')
     taipingyang('tbcp/jkx', '太平洋停办健康险')
+
+    pingan()
+    pinganWeb()
   })
 
 app
