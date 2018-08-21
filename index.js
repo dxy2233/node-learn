@@ -3,6 +3,7 @@ const Router = require('koa-router');
 const cheerio = require('cheerio');
 const superagent = require('superagent');
 const fs = require("fs");
+const async = require("async");
 
 const app = new Koa();
 const router = new Router();
@@ -192,6 +193,52 @@ const pinganWeb = async () => {
     })
 }
 
+//新华
+const xinghua = async (...url) => {
+  let items = []
+  const query = async (num) => {
+    await superagent.get(`http://www.newchinalife.com/Channel/${num}`)
+      .then(res => {
+        let $ = cheerio.load(res.text)
+        let total = $('.changepage').children().eq(-3).text()
+        $('.hospitalInfo tbody tr').each((i, elem) => {
+          items.push(
+            $(elem).children().eq(3).text() + '-' +
+            $(elem).children().eq(2).text() + '-' +
+            $(elem).children().eq(1).text()
+          )
+        })
+        return parseInt(total)
+      })
+      .then(async pages => {
+        if (!pages) return
+        for (let i = 2; i < pages + 1; i++) {
+          await superagent.get(`http://www.newchinalife.com/Channel/${num}?_tp_info_tbody=${i}`)
+            .then(res => {
+              let $ = cheerio.load(res.text)
+              $('.hospitalInfo tbody tr').each((i, elem) => {
+                items.push(
+                  $(elem).children().eq(3).text() + '-' +
+                  $(elem).children().eq(2).text() + '-' +
+                  $(elem).children().eq(1).text()
+                )
+              })
+            })
+            .catch(err => {
+              console.log(err);
+            })
+        }
+      })
+      .catch(err => {
+        console.log(err);
+      })
+  }
+  for (let i = 0; i < url.length; i++) {
+    await query(url[i])
+  }
+  txt('新华', items)
+}
+
 
 router.get('/', async (ctx, next) => {
     youbang()
@@ -207,6 +254,8 @@ router.get('/', async (ctx, next) => {
 
     pingan()
     pinganWeb()
+
+    xinghua(2871650, 2871586, 2871506, 2871442, 2871366, 2871302, 2871179, 2870667)
   })
 
 app
